@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+
+import telegram
+import csv
+import datetime
+import os
+import pathlib
+
+from trender import TRender
+
+# Env Vars
+# Data Directory
+DATADIR = pathlib.Path(os.getenv('HOME'), 'adisurc')
+if os.getenv('DATADIR') is not None:
+    DATADIR = pathlib.Path(os.getenv('DATADIR'))
+
+MEAL = ['0', '1']
+if os.getenv('MEAL') is not None:
+    MEAL = [os.getenv('MEAL')]
+
+# The Database files
+DATABASE_MENUS = pathlib.Path(DATADIR, 'menus.csv')
+DATABASE_DISHES = pathlib.Path(DATADIR, 'dishes.csv')
+FILESDIR = pathlib.Path(DATADIR, 'files')
+
+# Telegram Data
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+CHANNEL_ID = os.getenv('CHANNEL_ID')
+
+# Data to be used in operating the bot
+UPLOAD_PNG = os.getenv('UPLOAD_PNG') is not None
+DATE_OFFSET = int(os.getenv('DATE_OFFSET', 0))
+
+"""
+Searches a CSV file for all rows where certain fields match
+certain values
+
+Arguments:
+    file: The csv file path
+    fields: A list of tuples, in the form (field, value). Field
+    should be a name and not a number.
+Returns:
+    All rows in the CSV file, as dicts, where the value of each of
+    the fields specified in fields matches the specified value.
+"""
+def search_csv_fields(file, fields):
+    def allfieldsmatch(row, fields):
+        for field in fields:
+            if row[field[0]] != field[1]:
+                return False
+        return True
+
+    with open(file) as csvfile:
+        reader = csv.DictReader(csvfile, delimiter=';')
+        return [r for r in reader if allfieldsmatch(r, fields)]
+    
+"""
+Arguments:
+    offset: How many days to shift the date by
+Returns:
+    The current date, shifted by `offset` days.
+"""
+def get_date(offset=0):
+    return datetime.date.today() + datetime.timedelta(days=offset)
+
+"""
+Arguments:
+    date: The date for which to get the menu
+    meal: 0 for Lunch, 1 for Dinner
+Returns:
+    The id of the latest menu matching the input date
+    and meal. If there is no matching menu, returns None.
+"""
+
+def get_menu(date, meal):
+    date = date.strftime("%Y%m%d")
+    menu = search_csv_fields(DATABASE_MENUS, [('date', date), ('meal', str(meal))])
+    if not menu:
+        return None
+    return max(
+        menu,
+        key=lambda x: x['id']
+    )['id']
+
+"""
+Arguments:
+    menu: The ID of the Menu for which to get the servings
+Returns:
+    A list of four lists, containing all options for (in order),
+    first, second and third serving, plus the contents of the takeaway
+    basket, all in string format.
+"""
+def get_servings(menu):
+    dbdata = search_csv_fields(DATABASE_DISHES, [('menu', menu)])
+    servings = [[] for _ in range(0,4)]
+    for i in range(0, 4):
+        serving = [s['contents'] for s in dbdata if s['serving'] == str(i)]
+        servings[i].extend(serving)
+    return servings
+
+# Actual logic
+template = TRender('template.md', path=pathlib.Path(__file__).parent.absolute())
+date = get_date(DATE_OFFSET)
+mapmeals = {'0': "Pranzo", '1': "Cena"}
+
+bot = telegram.Bot(BOT_TOKEN)
+
+for meal in MEAL:
+    menu = get_menu(date, meal)
+    if not menu:
+        print(f'No menu found for meal #{meal} in date #{date}')
+        continue
+
+    first, second, contorno, takeaway = get_servings(get_menu(date, meal))
+    if len(takeaway) > 1:
+        takeaway_first_part = ",".join([t for t in takeaway[:-1]])
+        takeaway_last_element = takeaway[-1]
+        takeaway = f'{takeaway_first_part} e {takeaway_last_element}'
+    elif len(takeaway) == 1:
+        takeaway = takeaway[0]
+
+    render = template.render({
+        'date': date.strftime("%d/%m/%Y"),
+        'meal': mapmeals[meal],
+        'first': first,
+        'second': second,
+        'contorno': contorno,
+        'takeaway': takeaway
+    })
+    
+    if UPLOAD_PNG:
+        image = pathlib.Path(FILESDIR, f'{menu}.png')
+        if image.is_file():
+            with open(image, 'rb') as menupicture:
+                bot.send_photo(CHANNEL_ID, menupicture, caption=render, parse_mode='MarkdownV2')
+        else:
+            bot.send_message(CHANNEL_ID, render, parse_mode='MarkdownV2')
+    else:
+        bot.send_message(CHANNEL_ID, render, parse_mode='MarkdownV2')
