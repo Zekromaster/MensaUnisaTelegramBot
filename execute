@@ -74,7 +74,7 @@ Returns:
     The current date, shifted by `offset` days.
 """
 def get_date(date_offset=0, time_offset=0):
-    return datetime.date.today() + datetime.timedelta(days=date_offset) + datetime.timedelta(hours=time_offset)
+    return (datetime.datetime.now() + datetime.timedelta(days=date_offset) + datetime.timedelta(hours=time_offset)).date()
 
 """
 Arguments:
