@@ -15,6 +15,7 @@
 import telegram
 import csv
 import datetime
+import sys
 import os
 import pathlib
 
@@ -34,6 +35,11 @@ if MEAL != "0" or MEAL != "1":
 DATABASE_MENUS = pathlib.Path(DATADIR, 'menus.csv')
 DATABASE_DISHES = pathlib.Path(DATADIR, 'dishes.csv')
 FILESDIR = pathlib.Path(DATADIR, 'files')
+
+# Internal files
+INTERNAL = pathlib.Path(DATADIR, '.telegrambot_data')
+INTERNAL.mkdir(parents = True, exist_ok = True)
+LAST_EXEC_FILE = pathlib.Path(INTERNAL, f'last_exec_{MEAL}') 
 
 # Telegram Data
 BOT_TOKEN = os.getenv('BOT_TOKEN')
@@ -69,7 +75,8 @@ def search_csv_fields(file, fields):
     
 """
 Arguments:
-    offset: How many days to shift the date by
+    date_offset: How many days to shift the date by
+    time_offset: How many hours to shift the date by
 Returns:
     The current date, shifted by `offset` days.
 """
@@ -111,41 +118,80 @@ def get_servings(menu):
         servings[i].extend(serving)
     return servings
 
+"""
+Reports a result by writing it in the utility file in LAST_EXEC_FILE.
+
+Arguments:
+    status: A status. It should be s for success, f for failure or e for exception 
+    date: The date for which to report a failure
+"""
+def report_result(status, date):
+    with LAST_EXEC_FILE.open('w') as f:
+        f.write(f'{status} {date.strftime("%Y%m%d")}')
+
+"""
+Gets the last execution result
+
+Returns:
+    A dict with two keys: `status` representing the status (s for success, f for failure,
+    e for exception) and `date` representing the date. Can return None.
+"""
+def get_last_exec():
+    if not LAST_EXEC_FILE.is_file():
+        return None
+    with LAST_EXEC_FILE.open('r') as f:
+        first_line = f.readline().split(" ")
+        return {'status': first_line[0], 'date': datetime.datetime.strptime(first_line[1], "%Y%m%d").date()}
+
 # Actual logic
-template = TRender('template.md', path=pathlib.Path(__file__).parent.absolute())
+last_execution = get_last_exec()
 date = get_date(DATE_OFFSET, TIME_OFFSET)
-mapmeals = {'0': "Pranzo", '1': "Cena"}
 
-bot = telegram.Bot(BOT_TOKEN)
+try:
+    if (last_execution is not None) and (last_execution['status'] == 's') and (last_execution['date'] == date):
+        print(f'Last execution already had success for meal #{MEAL} in date {date}. Exiting.')
+        sys.exit()
 
-menu = get_menu(date, MEAL)
-if not menu:
-    print(f'No menu found for meal #{MEAL} in date #{date}')
-    continue
+    template = TRender('template.md', path=pathlib.Path(__file__).parent.absolute())
+    mapmeals = {'0': "Pranzo", '1': "Cena"}
 
-first, second, contorno, takeaway = get_servings(get_menu(date, MEAL))
-if len(takeaway) > 1:
-    takeaway_first_part = ",".join([t for t in takeaway[:-1]])
-    takeaway_last_element = takeaway[-1]
-    takeaway = f'{takeaway_first_part} e {takeaway_last_element}'
-elif len(takeaway) == 1:
-    takeaway = takeaway[0]
+    bot = telegram.Bot(BOT_TOKEN)
 
-render = template.render({
-    'date': date.strftime("%d/%m/%Y"),
-    'meal': mapmeals[MEAL],
-    'first': first,
-    'second': second,
-    'contorno': contorno,
-    'takeaway': takeaway
-})
+    menu = get_menu(date, MEAL)
+    if not menu:
+        print(f'No menu found for meal #{MEAL} in date #{date}')
+        report_result('f', date)
+        sys.exit()
+
+    first, second, contorno, takeaway = get_servings(menu)
+    if len(takeaway) > 1:
+        takeaway_first_part = ",".join([t for t in takeaway[:-1]])
+        takeaway_last_element = takeaway[-1]
+        takeaway = f'{takeaway_first_part} e {takeaway_last_element}'
+    elif len(takeaway) == 1:
+        takeaway = takeaway[0]
+
+    render = template.render({
+        'date': date.strftime("%d/%m/%Y"),
+        'meal': mapmeals[MEAL],
+        'first': first,
+        'second': second,
+        'contorno': contorno,
+        'takeaway': takeaway
+    })
     
-if UPLOAD_PNG:
-    image = pathlib.Path(FILESDIR, f'{menu}.png')
-    if image.is_file():
-        with open(image, 'rb') as menupicture:
-            bot.send_photo(CHANNEL_ID, menupicture, caption=render, parse_mode='MarkdownV2')
+    if UPLOAD_PNG:
+        image = pathlib.Path(FILESDIR, f'{menu}.png')
+        if image.is_file():
+            with open(image, 'rb') as menupicture:
+                bot.send_photo(CHANNEL_ID, menupicture, caption=render, parse_mode='MarkdownV2')
+        else:
+            bot.send_message(CHANNEL_ID, render, parse_mode='MarkdownV2')
     else:
         bot.send_message(CHANNEL_ID, render, parse_mode='MarkdownV2')
+
+except Exception as e:
+    print(e)
+    report_result('e', date)
 else:
-    bot.send_message(CHANNEL_ID, render, parse_mode='MarkdownV2')
+    report_result('s', date)

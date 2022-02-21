@@ -1,6 +1,7 @@
 # MensaUnisa/TelegramBot
 A simple python script that uses the data from my Cacher for the UniSa Refectory to
-post the menu for a specific day to a telegram channel.
+post the menu for a specific day to a telegram channel. It won't post the same day
+two times in a row, but it will reattempt if last attempt failed.
 
 Run by running `execute` inside the directory, or put it in your crontab to 
 post daily.
