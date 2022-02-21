@@ -42,6 +42,7 @@ CHANNEL_ID = os.getenv('CHANNEL_ID')
 # Data to be used in operating the bot
 UPLOAD_PNG = os.getenv('UPLOAD_PNG') is not None
 DATE_OFFSET = int(os.getenv('DATE_OFFSET', 0))
+TIME_OFFSET = int(os.getenv('TIME_OFFSET', 0))
 
 """
 Searches a CSV file for all rows where certain fields match
@@ -72,8 +73,8 @@ Arguments:
 Returns:
     The current date, shifted by `offset` days.
 """
-def get_date(offset=0):
-    return datetime.date.today() + datetime.timedelta(days=offset)
+def get_date(date_offset=0, time_offset=0):
+    return datetime.date.today() + datetime.timedelta(days=date_offset) + datetime.timedelta(hours=time_offset)
 
 """
 Arguments:
@@ -112,7 +113,7 @@ def get_servings(menu):
 
 # Actual logic
 template = TRender('template.md', path=pathlib.Path(__file__).parent.absolute())
-date = get_date(DATE_OFFSET)
+date = get_date(DATE_OFFSET, TIME_OFFSET)
 mapmeals = {'0': "Pranzo", '1': "Cena"}
 
 bot = telegram.Bot(BOT_TOKEN)

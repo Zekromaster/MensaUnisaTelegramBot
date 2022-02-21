@@ -19,13 +19,15 @@ containing the various files downloaded by the cacher and to be posted. Default 
 `UPLOAD_PNG`: Set to any value if the bot should also upload PNG images of the menu.
 
 `DATE_OFFSET`: The bot, by default, posts the menu for the current date. If you need to
-offset this date (i.e. to post tomorrow's menu every night at 8 PM) you might use 
-he `DATE_OFFSET` variable, specifying the number of days to add to the current day. It
-supports negative numbers.
+offset this date (i.e. to post tomorrow's menu) you might use the `DATE_OFFSET` variable,
+specifying the number of days to add to the current day. It supports negative numbers.
 
-`MEAL`: The bot, by default, sends both dinner and lunch. If you need to only
-send one of these, you might use the MEAL environment variable. 0 for Lunch, 1
-for Dinner.
+`TIME_OFFSET`: If you need to offset the date by some hours (i.e. to post the menu 8 hours 
+early), you might use the `TIME_OFFSET` variable, specifying the number of hours to add to
+the current time. It supports negative numbers.
+
+`MEAL`: The bot, by default, sends both dinner and lunch. If you need to only send one of these,
+you might use the `MEAL` environment variable. 0 for Lunch, 1 for Dinner.
 
 ## Dockerfile
 You may run this through Docker by mounting a volume to `/adisurc` (or passing your own `DATADIR` 
