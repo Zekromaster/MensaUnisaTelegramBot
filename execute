@@ -26,9 +26,9 @@ DATADIR = pathlib.Path(os.getenv('HOME'), 'adisurc')
 if os.getenv('DATADIR') is not None:
     DATADIR = pathlib.Path(os.getenv('DATADIR'))
 
-MEAL = ['0', '1']
-if os.getenv('MEAL') is not None:
-    MEAL = [os.getenv('MEAL')]
+MEAL = os.getenv('MEAL') or "0"
+if MEAL != "0" or MEAL != "1":
+    MEAL = "0"
 
 # The Database files
 DATABASE_MENUS = pathlib.Path(DATADIR, 'menus.csv')
@@ -118,35 +118,34 @@ mapmeals = {'0': "Pranzo", '1': "Cena"}
 
 bot = telegram.Bot(BOT_TOKEN)
 
-for meal in MEAL:
-    menu = get_menu(date, meal)
-    if not menu:
-        print(f'No menu found for meal #{meal} in date #{date}')
-        continue
+menu = get_menu(date, MEAL)
+if not menu:
+    print(f'No menu found for meal #{MEAL} in date #{date}')
+    continue
 
-    first, second, contorno, takeaway = get_servings(get_menu(date, meal))
-    if len(takeaway) > 1:
-        takeaway_first_part = ",".join([t for t in takeaway[:-1]])
-        takeaway_last_element = takeaway[-1]
-        takeaway = f'{takeaway_first_part} e {takeaway_last_element}'
-    elif len(takeaway) == 1:
-        takeaway = takeaway[0]
+first, second, contorno, takeaway = get_servings(get_menu(date, MEAL))
+if len(takeaway) > 1:
+    takeaway_first_part = ",".join([t for t in takeaway[:-1]])
+    takeaway_last_element = takeaway[-1]
+    takeaway = f'{takeaway_first_part} e {takeaway_last_element}'
+elif len(takeaway) == 1:
+    takeaway = takeaway[0]
 
-    render = template.render({
-        'date': date.strftime("%d/%m/%Y"),
-        'meal': mapmeals[meal],
-        'first': first,
-        'second': second,
-        'contorno': contorno,
-        'takeaway': takeaway
-    })
+render = template.render({
+    'date': date.strftime("%d/%m/%Y"),
+    'meal': mapmeals[MEAL],
+    'first': first,
+    'second': second,
+    'contorno': contorno,
+    'takeaway': takeaway
+})
     
-    if UPLOAD_PNG:
-        image = pathlib.Path(FILESDIR, f'{menu}.png')
-        if image.is_file():
-            with open(image, 'rb') as menupicture:
-                bot.send_photo(CHANNEL_ID, menupicture, caption=render, parse_mode='MarkdownV2')
-        else:
-            bot.send_message(CHANNEL_ID, render, parse_mode='MarkdownV2')
+if UPLOAD_PNG:
+    image = pathlib.Path(FILESDIR, f'{menu}.png')
+    if image.is_file():
+        with open(image, 'rb') as menupicture:
+            bot.send_photo(CHANNEL_ID, menupicture, caption=render, parse_mode='MarkdownV2')
     else:
         bot.send_message(CHANNEL_ID, render, parse_mode='MarkdownV2')
+else:
+    bot.send_message(CHANNEL_ID, render, parse_mode='MarkdownV2')

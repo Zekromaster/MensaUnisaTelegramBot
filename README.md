@@ -26,8 +26,10 @@ specifying the number of days to add to the current day. It supports negative nu
 early), you might use the `TIME_OFFSET` variable, specifying the number of hours to add to
 the current time. It supports negative numbers.
 
-`MEAL`: The bot, by default, sends both dinner and lunch. If you need to only send one of these,
-you might use the `MEAL` environment variable. 0 for Lunch, 1 for Dinner.
+`MEAL`: The bot, by default, sends the lunch menu. If you want to explicitly mark what menu to send,
+you might use the `MEAL` environment variable, setting it to 0 for Lunch, 1 for Dinner. (Setting it
+to 0 or any value other than 1 currently matches default behaviour, but default behaviour will not
+be guaranteed forever and it's highly suggested you explicitly mark the meal you intend to send). 
 
 ## Dockerfile
 You may run this through Docker by mounting a volume to `/adisurc` (or passing your own `DATADIR` 
