@@ -28,7 +28,7 @@ if os.getenv('DATADIR') is not None:
     DATADIR = pathlib.Path(os.getenv('DATADIR'))
 
 MEAL = os.getenv('MEAL') or "0"
-if MEAL != "0" or MEAL != "1":
+if MEAL != "0" and MEAL != "1":
     MEAL = "0"
 
 # The Database files
