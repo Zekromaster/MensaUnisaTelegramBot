@@ -1,4 +1,4 @@
-Il menù del giorno @date a @meal è:
+*__ @meal del @date __*
 
 #if @first:
 *Primi Piatti*
