@@ -1,4 +1,10 @@
 # MensaUnisa/TelegramBot
+
+> ⚠️ **This bot was made redundant since the UniSa refectory now publishes menus through their social media.**
+>
+> Additionally, the perser it relies on to get its data has stopped working
+> when the webpage used to gather the official menus was overhauled. 
+
 A simple python script that uses the data from my Cacher for the UniSa Refectory to
 post the menu for a specific day to a telegram channel. It won't post the same day
 two times in a row, but it will reattempt if last attempt failed.
